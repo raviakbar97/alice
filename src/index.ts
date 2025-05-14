@@ -1,10 +1,10 @@
+const fetch = require('node-fetch');
 import { config } from './config/default';
 import { startScheduler } from './services/scheduler';
 import { getCurrentTime, getCurrentWeather } from './services/fetcher';
 import { initializeTraits, updateMood, updateEnergy, mapTraitsToHyperparams } from './engines/personality';
 import { addMemory, getRecentMemories, summarizeLongTerm } from './engines/memory';
 import { appendLog } from './utils/logger';
-import OpenRouter from 'openrouter';
 
 let traits = initializeTraits();
 
@@ -28,16 +28,34 @@ export async function runTick(): Promise<void> {
   const summary = await summarizeLongTerm();
   const hyper = mapTraitsToHyperparams(traits);
 
-  const messages = [
-    { role: 'system', content: `You are Selena… Mood: ${traits.mood}, Energy: ${traits.energy}` },
-    { role: 'system', content: `Summary: ${summary}` },
-    { role: 'user', content: `Time: ${time}\nWeather: ${weather.desc}, ${weather.temp}°C\nMemories: ${JSON.stringify(shortMem)}` },
-    { role: 'user', content: 'Describe your next thoughts and actions in JSON with keys thoughts and actions.' }
-  ];
+  const promptText = [
+    `You are Selena… Mood: ${traits.mood}, Energy: ${traits.energy}`,
+    `Summary: ${summary}`,
+    `Time: ${time}\nWeather: ${weather.desc}, ${weather.temp}°C\nMemories: ${JSON.stringify(shortMem)}`,
+    'Describe your next thoughts and actions in JSON with keys thoughts and actions.'
+  ].join('\n');
 
-  const client = new OpenRouter({ apiKey: config.openRouterApiKey });
-  const resp = await client.complete({ model: config.modelName, messages, ...hyper, response_format: { type: 'json_object' } });
-  const { thoughts, actions } = resp.choices[0].message as any;
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://topupin.site',
+      'X-Title': 'Topupin Assistant',
+    },
+    body: JSON.stringify({
+      model: 'openai/gpt-4o',
+      messages: [
+        {
+          role: 'user',
+          content: promptText,
+        },
+      ],
+    }),
+  });
+
+  const data = await res.json();
+  const { thoughts, actions } = JSON.parse(data.choices[0].message.content || '{}');
 
   traits = updateEnergy(traits, 0.1);
   addMemory({ timestamp: time, summary: actions });
