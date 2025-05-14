@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { config } from './config/default';
 import { Scheduler } from './services/scheduler';
 import { Fetcher } from './services/fetcher';

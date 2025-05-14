@@ -1,21 +1,8 @@
 export const config = {
-  api: {
-    baseUrl: process.env.API_BASE_URL || 'https://api.example.com',
-    timeout: 30000,
-  },
-  scheduler: {
-    defaultInterval: '*/5 * * * *', // Every 5 minutes
-  },
-  memory: {
-    maxEntries: 60,
-  },
-  personality: {
-    defaultTraits: {
-      openness: 0.7,
-      conscientiousness: 0.8,
-      extraversion: 0.6,
-      agreeableness: 0.75,
-      neuroticism: 0.4,
-    },
-  },
-}; 
+  openRouterApiKey: process.env.OPENROUTER_API_KEY!,
+  weatherApiKey: process.env.WEATHER_API_KEY!,
+  cronSchedule: '*/1 * * * *',
+  decayRate: 0.05,
+  energyThreshold: 0.2,
+  moodDrift: 0.05
+} as const; 

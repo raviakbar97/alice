@@ -1,5 +1,7 @@
 import cron from 'node-cron';
 import { logger } from '../utils/logger';
+import { runTick } from '../index';
+import { config } from '../config/default';
 
 export class Scheduler {
   private tasks: Map<string, cron.ScheduledTask>;
@@ -44,4 +46,12 @@ export class Scheduler {
     });
     this.tasks.clear();
   }
+}
+
+export function startScheduler(): void {
+  cron.schedule(
+    config.cronSchedule,
+    async () => { await runTick(); },
+    { timezone: 'Asia/Jakarta' }
+  );
 } 
