@@ -18,5 +18,8 @@
     "node-cron": "^4.0.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14"
   }
 }
