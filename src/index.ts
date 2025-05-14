@@ -36,7 +36,7 @@ export async function runTick(): Promise<void> {
   ];
 
   const client = new OpenRouter({ apiKey: config.openRouterApiKey });
-  const resp = await client.complete({ model: 'gpt-4o-mini', messages, ...hyper, response_format: { type: 'json_object' } });
+  const resp = await client.complete({ model: config.modelName, messages, ...hyper, response_format: { type: 'json_object' } });
   const { thoughts, actions } = resp.choices[0].message as any;
 
   traits = updateEnergy(traits, 0.1);
