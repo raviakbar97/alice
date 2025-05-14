@@ -1,46 +1,17 @@
-import { config } from '../config/default';
-import { logger } from '../utils/logger';
+import { MemoryEntry } from '../types';
 
-export interface MemoryEntry {
-  id: string;
-  timestamp: number;
-  content: any;
-  type: string;
+const shortTerm: MemoryEntry[] = [];
+
+export function addMemory(entry: MemoryEntry): void {
+  shortTerm.push(entry);
+  if (shortTerm.length > 60) shortTerm.shift();
 }
 
-export class MemoryEngine {
-  private entries: MemoryEntry[];
+export function getRecentMemories(): MemoryEntry[] {
+  const now = Date.now();
+  return shortTerm.filter(e => (now - Date.parse(e.timestamp)) / 60000 < 60);
+}
 
-  constructor() {
-    this.entries = [];
-  }
-
-  addEntry(content: any, type: string): void {
-    const entry: MemoryEntry = {
-      id: Math.random().toString(36).substring(7),
-      timestamp: Date.now(),
-      content,
-      type,
-    };
-
-    this.entries.push(entry);
-    logger.info(`Added memory entry of type ${type}`);
-
-    if (this.entries.length > config.memory.maxEntries) {
-      const removed = this.entries.shift();
-      logger.debug(`Removed oldest memory entry: ${removed?.id}`);
-    }
-  }
-
-  getEntries(type?: string): MemoryEntry[] {
-    if (type) {
-      return this.entries.filter(entry => entry.type === type);
-    }
-    return [...this.entries];
-  }
-
-  clearEntries(): void {
-    this.entries = [];
-    logger.info('Cleared all memory entries');
-  }
+export async function summarizeLongTerm(): Promise<string> {
+  return ''; // stub
 } 

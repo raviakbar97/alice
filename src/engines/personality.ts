@@ -1,40 +1,27 @@
+import { Traits, Hyperparams } from '../types';
 import { config } from '../config/default';
-import { logger } from '../utils/logger';
 
-export interface PersonalityTraits {
-  openness: number;
-  conscientiousness: number;
-  extraversion: number;
-  agreeableness: number;
-  neuroticism: number;
+export function initializeTraits(): Traits {
+  return { curiosity: 0.7, empathy: 0.5, humor: 0.2, mood: 0.5, energy: 1.0 };
 }
 
-export class PersonalityEngine {
-  private traits: PersonalityTraits;
+export function updateMood(traits: Traits): Traits {
+  traits.mood = Math.min(1, Math.max(0, traits.mood + (Math.random() * 2 - 1) * config.moodDrift));
+  return traits;
+}
 
-  constructor(initialTraits?: Partial<PersonalityTraits>) {
-    this.traits = {
-      ...config.personality.defaultTraits,
-      ...initialTraits,
-    };
-  }
+export function updateEnergy(traits: Traits, cost: number): Traits {
+  traits.energy = Math.min(1, Math.max(0, traits.energy - cost));
+  return traits;
+}
 
-  getTraits(): PersonalityTraits {
-    return { ...this.traits };
-  }
-
-  updateTrait(trait: keyof PersonalityTraits, value: number): void {
-    if (value < 0 || value > 1) {
-      throw new Error(`Trait value must be between 0 and 1, got ${value}`);
-    }
-
-    this.traits[trait] = value;
-    logger.info(`Updated trait ${trait} to ${value}`);
-  }
-
-  updateTraits(traits: Partial<PersonalityTraits>): void {
-    Object.entries(traits).forEach(([trait, value]) => {
-      this.updateTrait(trait as keyof PersonalityTraits, value);
-    });
-  }
+export function mapTraitsToHyperparams(traits: Traits): Hyperparams {
+  const temp = traits.mood > 0.7 ? 1.0 : traits.mood < 0.3 ? 0.4 : 0.7;
+  return {
+    temperature: temp,
+    top_p: temp + 0.2,
+    max_tokens: 256,
+    frequency_penalty: traits.empathy < 0.3 ? 0.2 : 0.0,
+    presence_penalty: traits.curiosity < 0.3 ? 0.2 : 0.0
+  };
 } 

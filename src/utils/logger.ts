@@ -1,3 +1,16 @@
+import { promises as fs } from 'fs';
+import { ActivityLogEntry } from '../types';
+
+const LOG_PATH = 'logs/activity-log.json';
+
+export async function appendLog(entry: ActivityLogEntry): Promise<void> {
+  await fs.mkdir('logs', { recursive: true });
+  const existing = await fs.readFile(LOG_PATH, 'utf-8').catch(() => '[]');
+  const arr = JSON.parse(existing) as ActivityLogEntry[];
+  arr.push(entry);
+  await fs.writeFile(LOG_PATH, JSON.stringify(arr, null, 2));
+}
+
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 class Logger {
