@@ -8,7 +8,7 @@ import { getTimeOfDay, shouldConsiderRest } from './utils/time';
 import { loadState, updateState } from './utils/state';
 import { analyzeActivity, calculateEnergyChange, calculateMoodChange } from './services/activity-analyzer';
 import dotenv from 'dotenv';
-import express from 'express';
+import express, { Request, Response, Router } from 'express';
 import cors from 'cors';
 import path from 'path';
 
@@ -226,33 +226,33 @@ app.use(express.json());
 // Serve static files
 app.use(express.static(path.join(__dirname, '..')));
 
-// API endpoints
-app.post('/tick/start', (req, res) => {
+// Create router for tick endpoints
+const router: Router = express.Router();
+
+router.post('/start', (req: Request, res: Response): void => {
   if (isTickRunning) {
-    return res.status(400).json({ error: 'Tick process is already running' });
+    res.status(400).json({ error: 'Tick is already running' });
+    return;
   }
-  
   isTickRunning = true;
-  runTick(); // Start first tick immediately
-  res.json({ message: 'Tick process started' });
+  res.json({ message: 'Tick started' });
 });
 
-app.post('/tick/stop', (req, res) => {
+router.post('/stop', (req: Request, res: Response): void => {
   if (!isTickRunning) {
-    return res.status(400).json({ error: 'Tick process is not running' });
+    res.status(400).json({ error: 'Tick is not running' });
+    return;
   }
-  
   isTickRunning = false;
-  if (tickInterval) {
-    clearInterval(tickInterval);
-    tickInterval = null;
-  }
-  res.json({ message: 'Tick process stopped' });
+  res.json({ message: 'Tick stopped' });
 });
 
-app.get('/tick/status', (req, res) => {
+router.get('/status', (req: Request, res: Response): void => {
   res.json({ isRunning: isTickRunning });
 });
+
+// Mount the router
+app.use('/tick', router);
 
 // Modify runTick to be controlled
 export async function runTick(): Promise<void> {
