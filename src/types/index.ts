@@ -1,22 +1,9 @@
 export * from '../engines/personality';
 export * from '../engines/memory';
 
-export interface Traits {
-  curiosity: number;
-  empathy: number;
-  humor: number;
-  mood: number;
-  energy: number;
-}
-
 export interface Weather {
   desc: string;
   temp: number;
-}
-
-export interface MemoryEntry {
-  timestamp: string;
-  summary: string;
 }
 
 export interface ActivityLogEntry {
@@ -24,14 +11,15 @@ export interface ActivityLogEntry {
   weather: Weather;
   energy: number;
   mood: number;
-  thoughts: string;
-  actions: string;
+  thoughts: string[];
+  actions: string[];
+  duration: number;
 }
 
-export interface Hyperparams {
-  temperature: number;
-  top_p: number;
-  max_tokens: number;
-  frequency_penalty: number;
-  presence_penalty: number;
+export interface ActivityAnalysis {
+  activityType: 'work' | 'rest' | 'eating' | 'social' | 'passive';
+  intensity: number;
+  energyImpact: number;
+  moodImpact: number;
+  isAppropriate: boolean;
 } 

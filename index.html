@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Activity Log</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: #181c20;
+      color: #e2e6ea;
+    }
+    .log-column {
+      max-height: 70vh;
+      overflow-y: auto;
+      background: #23272b;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      padding: 1.5rem 1.2rem 1.2rem 1.2rem;
+    }
+    .log-entry {
+      margin-bottom: 2.2rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #343a40;
+    }
+    .log-time {
+      font-size: 0.98rem;
+      color: #7c8692;
+      margin-bottom: 0.2rem;
+    }
+    .thought-line {
+      color: #b0b8c1;
+      font-size: 1.08rem;
+      margin-bottom: 0.15rem;
+      font-style: italic;
+    }
+    .action-line {
+      color: #f8f9fa;
+      font-size: 1.13rem;
+      margin-bottom: 0.15rem;
+      font-style: italic;
+    }
+    .countdown-line {
+      font-size: 0.93rem;
+      color: #b0b8c1;
+      margin-top: 0.2rem;
+    }
+    h3, .mb-4 {
+      color: #f8f9fa;
+    }
+    .energy-mood-col {
+      background: #23272b;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      padding: 1.5rem 1.2rem 1.2rem 1.2rem;
+      min-width: 220px;
+      max-width: 300px;
+      margin-left: 1.5rem;
+      height: fit-content;
+    }
+    .energy-mood-label {
+      color: #b0b8c1;
+      font-size: 1.08rem;
+      margin-bottom: 0.2rem;
+      letter-spacing: 0.5px;
+    }
+    .energy-mood-value {
+      color: #f8f9fa;
+      font-size: 1.13rem;
+      margin-bottom: 0.5rem;
+      font-family: monospace;
+    }
+    .progress {
+      background-color: #181c20;
+      height: 1.1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1.2rem;
+    }
+    .progress-bar-energy {
+      background: linear-gradient(90deg, #00c9a7 0%, #00b4d8 100%);
+    }
+    .progress-bar-mood {
+      background: linear-gradient(90deg, #f7971e 0%, #ffd200 100%);
+    }
+  </style>
+</head>
+<body>
+  <div class="container py-4">
+    <h3 class="mb-4">Activity Log</h3>
+    <div class="row justify-content-center">
+      <div class="col-lg-7 col-md-8 col-12">
+        <div class="log-column" id="activity-log"></div>
+      </div>
+      <div class="col-lg-3 col-md-4 col-12 d-flex align-items-start">
+        <div class="energy-mood-col w-100">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="energy-mood-label">Status:</div>
+            <div class="energy-mood-value" id="tick-status">Stopped</div>
+          </div>
+          <div class="d-flex gap-2 mb-3">
+            <button id="start-tick" class="btn btn-success flex-grow-1">Start Tick</button>
+            <button id="stop-tick" class="btn btn-danger flex-grow-1">Stop Tick</button>
+          </div>
+          <div class="energy-mood-label">energy :</div>
+          <div class="energy-mood-value" id="energy-val">-</div>
+          <div class="progress mb-3">
+            <div id="energy-bar" class="progress-bar progress-bar-energy" role="progressbar" style="width: 0%"></div>
+          </div>
+          <div class="energy-mood-label">mood :</div>
+          <div class="energy-mood-value" id="mood-val">-</div>
+          <div class="progress">
+            <div id="mood-bar" class="progress-bar progress-bar-mood" role="progressbar" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    let timerRAF = null;
+
+    async function fetchLog() {
+      const res = await fetch('logs/activity-log.json');
+      return await res.json();
+    }
+
+    function formatTimeLeft(ms) {
+      if (ms <= 0) return '0s';
+      const totalSeconds = Math.ceil(ms / 1000);
+      const h = Math.floor(totalSeconds / 3600);
+      const m = Math.floor((totalSeconds % 3600) / 60);
+      const s = totalSeconds % 60;
+      if (h > 0) return `${h}h ${m}m ${s}s`;
+      if (m > 0) return `${m}m ${s}s`;
+      return `${s}s`;
+    }
+
+    function renderEnergyMood(latest) {
+      const energy = (latest.energy * 100).toFixed(1);
+      const mood = (latest.mood * 100).toFixed(1);
+      document.getElementById('energy-val').textContent = energy + '%';
+      document.getElementById('mood-val').textContent = mood + '%';
+      document.getElementById('energy-bar').style.width = energy + '%';
+      document.getElementById('mood-bar').style.width = mood + '%';
+      document.getElementById('energy-bar').setAttribute('aria-valuenow', energy);
+      document.getElementById('mood-bar').setAttribute('aria-valuenow', mood);
+    }
+
+    function renderLog(logs) {
+      const logDiv = document.getElementById('activity-log');
+      logDiv.innerHTML = logs.slice().reverse().map((entry, idx, arr) => {
+        const isLatest = idx === 0;
+        const thoughts = entry.thoughts.map(t => `<div class='thought-line'>"${t}"</div>`).join('');
+        const actions = entry.actions.map(a => `<div class='action-line'>"${a}"</div>`).join('');
+        let countdown = '';
+        if (isLatest) {
+          countdown = `<div class=\"countdown-line\" id=\"countdown-timer\"></div>`;
+        }
+        return `
+          <div class=\"log-entry\">
+            <div class=\"log-time\">${entry.timestamp}</div>
+            ${thoughts}
+            ${actions}
+            ${countdown}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function startTimer(latest) {
+      if (timerRAF) {
+        cancelAnimationFrame(timerRAF);
+        timerRAF = null;
+      }
+      const timerDiv = document.getElementById('countdown-timer');
+      if (!timerDiv) return;
+      const start = new Date(latest.timestamp).getTime();
+      const durationMs = latest.duration * 60 * 1000;
+      const end = start + durationMs;
+      function update() {
+        const now = Date.now();
+        const msLeft = end - now;
+        timerDiv.textContent = `⏳ ${formatTimeLeft(msLeft)} until next activity`;
+        if (msLeft > 0) {
+          timerRAF = requestAnimationFrame(update);
+        } else {
+          timerDiv.textContent = '⏳ 0s until next activity';
+        }
+      }
+      update();
+    }
+
+    async function main() {
+      const logs = await fetchLog();
+      if (!logs.length) return;
+      const latest = logs[logs.length - 1];
+      renderEnergyMood(latest);
+      renderLog(logs);
+      startTimer(latest);
+    }
+    main();
+    setInterval(main, 5000);
+
+    // Add tick control functions
+    async function startTick() {
+      try {
+        const res = await fetch('/tick/start', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          updateTickStatus(true);
+        } else {
+          console.error('Failed to start tick:', data.error);
+        }
+      } catch (error) {
+        console.error('Error starting tick:', error);
+      }
+    }
+
+    async function stopTick() {
+      try {
+        const res = await fetch('/tick/stop', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          updateTickStatus(false);
+        } else {
+          console.error('Failed to stop tick:', data.error);
+        }
+      } catch (error) {
+        console.error('Error stopping tick:', error);
+      }
+    }
+
+    async function checkTickStatus() {
+      try {
+        const res = await fetch('/tick/status');
+        const data = await res.json();
+        updateTickStatus(data.isRunning);
+      } catch (error) {
+        console.error('Error checking tick status:', error);
+      }
+    }
+
+    function updateTickStatus(isRunning) {
+      const statusEl = document.getElementById('tick-status');
+      const startBtn = document.getElementById('start-tick');
+      const stopBtn = document.getElementById('stop-tick');
+      
+      statusEl.textContent = isRunning ? 'Running' : 'Stopped';
+      startBtn.disabled = isRunning;
+      stopBtn.disabled = !isRunning;
+    }
+
+    // Add event listeners
+    document.getElementById('start-tick').addEventListener('click', startTick);
+    document.getElementById('stop-tick').addEventListener('click', stopTick);
+
+    // Check status periodically
+    checkTickStatus();
+    setInterval(checkTickStatus, 5000);
+  </script>
+</body>
+</html> 

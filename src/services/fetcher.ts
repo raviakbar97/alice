@@ -1,30 +1,67 @@
-import axios from 'axios';
-import { Weather } from '../types';
+import https from 'https';
 import { config } from '../config/default';
+import { getJakartaTimestamp } from '../utils/logger';
+
+interface Weather {
+  desc: string;
+  temp: number;
+}
 
 export async function getCurrentTime(): Promise<string> {
-  return new Date().toISOString();
+  return getJakartaTimestamp();
 }
 
 export async function getCurrentWeather(): Promise<Weather> {
-  try {
-    const resp = await axios.get(
-      `https://${config.rapidApiHost}/fivedaysforcast`, {
-        params: {
-          latitude: -6.183234852638808,
-          longitude: 106.63616429949393,
-          lang: 'EN'
-        },
-        headers: {
-          'x-rapidapi-key': config.rapidApiKey,
-          'x-rapidapi-host': config.rapidApiHost
-        }
+  return new Promise((resolve, reject) => {
+    const options = {
+      method: 'GET',
+      hostname: 'api.weatherapi.com',
+      path: `/v1/current.json?key=${config.weatherApiKey}&q=${encodeURIComponent(config.weatherLocation)}&aqi=no`,
+      headers: {
+        'Accept': 'application/json'
       }
-    );
-    const now = resp.data.list?.[0];
-    return { desc: now.weather[0].description, temp: now.main.temp };
-  } catch (err) {
-    console.error('RapidAPI weather error:', err);
-    throw err;
-  }
+    };
+
+    const req = https.request(options, (res) => {
+      const chunks: Buffer[] = [];
+
+      res.on('data', (chunk) => {
+        chunks.push(chunk);
+      });
+
+      res.on('end', () => {
+        try {
+          const body = Buffer.concat(chunks);
+          const data = JSON.parse(body.toString());
+          
+          if (!data.current) {
+            throw new Error('No current weather data available');
+          }
+
+          resolve({
+            desc: data.current.condition.text.toLowerCase(),
+            temp: data.current.temp_c // Temperature in Celsius
+          });
+        } catch (error) {
+          console.error('Error parsing weather data:', error);
+          // Fallback to default weather if API fails
+          resolve({
+            desc: 'clear sky',
+            temp: 20
+          });
+        }
+      });
+    });
+
+    req.on('error', (error) => {
+      console.error('Error fetching weather:', error);
+      // Fallback to default weather if API fails
+      resolve({
+        desc: 'clear sky',
+        temp: 20
+      });
+    });
+
+    req.end();
+  });
 } 
