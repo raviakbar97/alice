@@ -289,16 +289,16 @@ export async function runTick(): Promise<void> {
 
   try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
+    method: 'POST',
+    headers: {
         'Authorization': `Bearer ${config.openRouterApiKey}`,
         'HTTP-Referer': SITE_URL,
         'X-Title': SITE_NAME,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: config.modelName,
-        messages: [
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: config.modelName,
+      messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: dynamicContext }
         ],
